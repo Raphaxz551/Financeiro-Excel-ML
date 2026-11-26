@@ -89,7 +89,7 @@ dialog select,dialog input{width:100%;margin-top:4px}
     <div class="seg" role="group" aria-label="Modo"><button id="mT" class="on">Total</button><button id="mI">Individual</button></div>
     <select id="selAcc" hidden aria-label="Conta"></select>
     <button id="btnDir">Conectar pasta</button>
-    <button id="btnAdd" class="ghost">Adicionar arquivos</button><button id="btnImp">Importar vendas ML</button><button id="btnSai" class="ghost">Registrar saída</button><input type="file" id="fImp" accept=".xlsx,.xls,.csv" hidden>
+    <button id="btnAdd" class="ghost">Adicionar arquivos</button><button id="btnLink" class="ghost">Conectar por link</button><button id="btnImp">Importar vendas ML</button><button id="btnSai" class="ghost">Registrar saída</button><input type="file" id="fImp" accept=".xlsx,.xls,.csv" hidden>
     <input type="file" id="file" accept=".xlsx,.xls,.csv" multiple hidden>
     <label class="cfg">Resumo na linha <input type="number" id="sumRow" value="2" min="1"></label>
     <label class="cfg">Dados desde a linha <input type="number" id="firstRow" value="9" min="1"></label>
@@ -120,6 +120,7 @@ dialog select,dialog input{width:100%;margin-top:4px}
 </main>
 <dialog id="dImp"><h2>Importar vendas do Mercado Livre</h2><p class="sub" id="impInfo"></p><label>Conta<select id="impAcc"></select></label><div class="dact"><button class="ghost" id="impNo">Cancelar</button><button id="impOk">Importar</button></div></dialog>
 <dialog id="dSai"><h2>Registrar retirada / saída</h2><label>Conta<select id="saiAcc"></select></label><label>Data da saída<input type="date" id="saiData"></label><label>Valor (R$)<input type="number" id="saiVal" step="0.01" min="0" placeholder="0,00"></label><label>Descrição (opcional)<input type="text" id="saiDesc" placeholder="Ex.: saque Mercado Pago"></label><div class="dact"><button class="ghost" id="saiNo">Cancelar</button><button id="saiOk">Salvar saída</button></div></dialog>
+<dialog id="dLink"><h2>Conectar conta por link</h2><p class="sub">Use o link de uma planilha do Google Planilhas com o compartilhamento “Qualquer pessoa com o link: Leitor”. O painel relê o link a cada 30 segundos.</p><label>Nome da conta<input type="text" id="lkName" placeholder="Ex.: Conta Deise"></label><label>Link da planilha<input type="text" id="lkUrl" placeholder="https://docs.google.com/spreadsheets/d/…"></label><div class="dact"><button class="ghost" id="lkNo">Cancelar</button><button id="lkOk">Conectar</button></div></dialog>
 <div id="toast" role="status" hidden></div>
 <script>
 const $=s=>document.querySelector(s);
@@ -157,7 +158,7 @@ function errs(o){
 }
 async function ingest(f,fromDir){
   const name=f.name.replace(/\.(xlsx|xls|csv)$/i,'');
-  const wb=XLSX.read(await f.arrayBuffer(),{cellDates:true});
+  const wb=f.text!=null?XLSX.read(f.text,{type:'string',cellDates:true}):XLSX.read(await f.arrayBuffer(),{cellDates:true});
   const A=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1,raw:true,defval:''});
   const S=A[+$('#sumRow').value-1]||[],rows=[];
   for(let i=+$('#firstRow').value-1;i<A.length;i++){const r=A[i];if(!r||r.every(c=>c===''||c==null))continue;rows.push(classify(r,i+1,name))}
@@ -222,7 +223,7 @@ function table(){
 function chips(){
   $('#chips').innerHTML=Object.values(acc).map(a=>`<span class="chip ${off.has(a.name)?'off':''}"><label><input type="checkbox" data-a="${a.name}" ${off.has(a.name)?'':'checked'}> ${a.name}</label>${a.fromDir?'':`<button data-rm="${a.name}" aria-label="Remover ${a.name}">✕</button>`}</span>`).join('');
   document.querySelectorAll('[data-a]').forEach(i=>i.onchange=()=>{i.checked?off.delete(i.dataset.a):off.add(i.dataset.a);refresh()});
-  document.querySelectorAll('[data-rm]').forEach(b=>b.onclick=()=>{delete acc[b.dataset.rm];refresh()});
+  document.querySelectorAll('[data-rm]').forEach(b=>b.onclick=()=>{delete acc[b.dataset.rm];saveLK(LK().filter(l=>l.name!==b.dataset.rm));refresh()});
 }
 function refresh(){
   const names=Object.keys(acc);
@@ -350,6 +351,38 @@ $('#btnCopy').onclick=()=>{
   const R=saidaLinhas();if(!R.length){toast('Nenhuma saída lançada aqui para copiar.',1);return}
   navigator.clipboard.writeText(R.map(r=>r.join('\t')).join('\n')).then(()=>toast(`${R.length} linha(s) copiada(s). Cole na primeira linha vazia da planilha, na coluna A.`),()=>toast('O navegador bloqueou a cópia. Use “Exportar saídas”.',1));
 };
+
+/* ===== Contas por link (Google Planilhas) ===== */
+const LK=()=>{try{return JSON.parse(localStorage.getItem('mllinks')||'[]')}catch(e){return[]}};
+const saveLK=l=>{try{localStorage.setItem('mllinks',JSON.stringify(l))}catch(e){}};
+function csvUrl(u){const m=String(u).match(/\/spreadsheets\/d\/([\w-]+)/);if(!m)return null;const g=(String(u).match(/[#&?]gid=(\d+)/)||[])[1];return `https://docs.google.com/spreadsheets/d/${m[1]}/gviz/tq?tqx=out:csv${g?'&gid='+g:''}`}
+const lkCache={};
+async function pullLink(l,silent){
+  try{
+    const r=await fetch(csvUrl(l.url),{cache:'no-store'});
+    if(!r.ok)throw new Error('o Google respondeu '+r.status);
+    const t=await r.text();
+    if(/^\s*<(!doctype|html)/i.test(t))throw new Error('o Google pediu login');
+    if(lkCache[l.name]===t&&acc[l.name])return false;
+    lkCache[l.name]=t;
+    await ingest({name:l.name+'.csv',lastModified:Date.now(),text:t},false);
+    return true;
+  }catch(e){if(!silent)toast(`Não consegui ler “${l.name}”: ${e.message}. Confira se o link está como “Qualquer pessoa com o link: Leitor”.`,1);return false}
+}
+async function syncLinks(){
+  let ch=false;for(const l of LK())ch=(await pullLink(l,true))||ch;
+  if(ch){refresh();status(`Contas por link atualizadas às ${new Date().toLocaleTimeString('pt-BR')}`,true)}
+}
+$('#btnLink').onclick=()=>{$('#lkName').value='';$('#lkUrl').value='';$('#dLink').showModal()};
+$('#lkNo').onclick=()=>$('#dLink').close();
+$('#lkOk').onclick=async()=>{
+  const name=$('#lkName').value.trim(),url=$('#lkUrl').value.trim();
+  if(!name||!csvUrl(url)){toast('Informe o nome da conta e um link do Google Planilhas (docs.google.com/spreadsheets/d/…).',1);return}
+  $('#dLink').close();toast('Lendo a planilha…');
+  const l={name,url};
+  if(await pullLink(l)){saveLK(LK().filter(x=>x.name!==name).concat(l));cur=name;refresh();toast(`Conta “${name}” conectada por link. Atualiza sozinha a cada 30 segundos.`)}
+};
+syncLinks();setInterval(syncLinks,30000);
 </script>
 </body>
 </html>
