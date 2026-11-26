@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lucro e Investimento — contas ML</title>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+:root{--bg:#EAF0EF;--ink:#0E2A2F;--ink2:#17414A;--mut:#60757A;--line:#DCE4E3;--lucro:#1F8A5B;--inv:#D99A1E;--ok:#1F8A5B;--warn:#B7791F;--err:#C4432F;--info:#2E6FB0;--head:"Bricolage Grotesque","DM Sans",system-ui,sans-serif;--sans:"DM Sans",system-ui,sans-serif;--r:14px;--sh:0 1px 2px rgba(14,42,47,.06),0 8px 24px rgba(14,42,47,.07)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.5 var(--sans)}
+header{display:flex;flex-wrap:wrap;gap:16px;align-items:center;justify-content:space-between;padding:24px 32px 54px;background:radial-gradient(900px 300px at 85% -40%,#2A6B63 0%,transparent 70%),linear-gradient(135deg,#0A2125,#17414A);color:#fff;border-radius:0 0 28px 28px}
+h1{font:700 28px/1.1 var(--head);margin:0;letter-spacing:-.01em}
+h2{font:700 18px var(--head);margin:0 0 12px;letter-spacing:-.01em}
+.sub{color:rgba(255,255,255,.72);font-size:12.5px;margin-top:6px}
+.cfg{color:rgba(255,255,255,.75);font-size:12px}
+main .sub,main .cfg{color:var(--mut)}
+button,select,input{font:inherit;color:inherit}
+button{background:var(--inv);color:#1B1405;font-weight:600;border:0;padding:9px 16px;border-radius:10px;cursor:pointer;transition:transform .12s,filter .12s}
+button:hover{filter:brightness(1.06);transform:translateY(-1px)}
+button.ghost{background:transparent;color:var(--ink);border:1px solid var(--line);font-weight:500}
+header button.ghost{color:#fff;border-color:rgba(255,255,255,.4)}
+:focus-visible{outline:3px solid #7FB7F0;outline-offset:2px}
+select,input[type=search],input[type=number]{background:#fff;border:1px solid var(--line);border-radius:10px;padding:8px 10px}
+header select,header input[type=number]{background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.28);color:#fff}
+header select option{color:#000}
+.bar{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.seg{display:inline-flex;background:rgba(255,255,255,.12);border-radius:12px;padding:3px}
+.seg button{background:transparent;color:#fff;font-weight:500;padding:7px 16px;border-radius:9px}
+.seg button.on{background:#fff;color:var(--ink);font-weight:600}
+.dot{width:9px;height:9px;border-radius:50%;background:#8AA0A3;display:inline-block;margin-right:7px}.dot.on{background:#4ADE9C;box-shadow:0 0 0 4px rgba(74,222,156,.25)}
+main{padding:0 32px 32px;max-width:1450px;margin:-32px auto 0}
+.chips{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px}
+.chip{background:#fff;border-radius:999px;padding:5px 12px;font-size:12.5px;box-shadow:var(--sh)}
+.chip.off{opacity:.5}
+.chip button{background:none;color:var(--err);padding:0 0 0 8px;font-weight:700;box-shadow:none}
+.strip{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:14px;margin-bottom:16px}
+.k{background:#fff;border-radius:var(--r);box-shadow:var(--sh);padding:16px 18px;border-top:4px solid var(--line)}
+.k:nth-child(1),.k:nth-child(2),.k:nth-child(5){border-top-color:var(--lucro)}
+.k:nth-child(3){border-top-color:var(--inv)}
+.k:nth-child(4){border-top-color:var(--err)}
+.k .l{font-size:12.5px;color:var(--mut);font-weight:500}
+.k .v{font:700 29px/1.15 var(--head);font-variant-numeric:tabular-nums;margin:4px 0 2px;letter-spacing:-.02em}
+.k .s{font-size:12px;color:var(--mut)}
+.k.bad .v,.neg{color:var(--err)}
+.grid{display:grid;grid-template-columns:minmax(300px,390px) 1fr;gap:16px;margin-bottom:16px}
+@media(max-width:900px){.grid{grid-template-columns:1fr}header{padding:20px}main{padding:0 16px 24px}}
+.panel{background:#fff;box-shadow:var(--sh);padding:18px;border-radius:var(--r)}
+.alert{display:block;width:100%;text-align:left;background:#FBFCFC;color:var(--ink);border:1px solid var(--line);border-left:5px solid var(--err);margin-bottom:9px;padding:10px 13px;border-radius:10px;font-weight:400;box-shadow:none}
+.alert.warn{border-left-color:var(--warn)}.alert.info{border-left-color:var(--info);cursor:default}.alert.ok{border-left-color:var(--ok);cursor:default;background:#EEF8F3}
+.alert.info:hover,.alert.ok:hover{transform:none;filter:none}
+.alert:hover{background:#F2F6F5}
+.alert.sel{background:#FCEDE9;box-shadow:0 0 0 2px var(--ink)}
+.alert b{display:block;font-weight:600}.alert span{font-size:12.5px;color:var(--mut)}
+.sm{display:flex;gap:5px;flex-wrap:wrap;margin:-4px 0 10px}
+.sm button{background:#EAF0EF;color:var(--ink);padding:3px 10px;font-size:12px;border-radius:999px;font-weight:500}
+.cw{height:300px;position:relative}
+.filters{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:12px}
+.tw{overflow:auto;border:1px solid var(--line);border-radius:12px;max-height:560px}
+table{border-collapse:separate;border-spacing:0;width:100%;font-size:13px}
+th{position:sticky;top:0;background:var(--ink);color:#fff;text-align:left;padding:10px 12px;white-space:nowrap;font-weight:600;z-index:1}
+td{padding:8px 12px;border-bottom:1px solid #EDF2F1;white-space:nowrap;font-variant-numeric:tabular-nums}
+tbody tr:hover{background:#F3F8F7}
+.n{text-align:right}
+tr.hasErr{background:#FDF4F1}tr.is-fake{background:#FFF8E3}tr.is-cancel td{color:var(--mut)}
+.b{display:inline-block;padding:2px 9px;border-radius:999px;font-size:11.5px;font-weight:600;margin-right:4px;border:0}
+.b.err{background:#FBE3DE;color:#A63A2B}.b.warn{background:#FCEFC9;color:#8A5A08}.b.ok{background:#DDF3E7;color:#17704A}.b.mut{background:#E8EEED;color:var(--mut)}
+td input{width:104px;text-align:right}
+.empty{padding:64px 24px;text-align:center;color:var(--mut);background:#fff;border:2px dashed #B9C9C7;border-radius:20px;box-shadow:none;margin-top:8px}
+.empty h2{font-size:24px;color:var(--ink)}
+.cfg input{width:60px}
+.k:nth-child(6){border-top-color:var(--info)}
+.b.info{background:#DDEBF8;color:#1E5B93}
+dialog{border:0;border-radius:18px;box-shadow:0 20px 60px rgba(10,33,37,.35);padding:24px;width:min(430px,92vw);color:var(--ink);font:14px var(--sans)}
+dialog::backdrop{background:rgba(10,33,37,.55)}
+dialog label{display:block;margin-top:12px;font-weight:500}
+dialog select,dialog input{width:100%;margin-top:4px}
+.dact{display:flex;gap:8px;justify-content:flex-end;margin-top:20px}
+#toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%);background:var(--ink);color:#fff;padding:12px 18px;border-radius:12px;box-shadow:var(--sh);max-width:90vw;z-index:9}
+#toast[hidden]{display:none}
+</style>
+</head>
+<body>
+<header>
+  <div><h1>Lucro e Investimento Raphael</h1><div class="sub"><span class="dot" id="dot"></span><span id="st">Nenhuma conta carregada</span></div></div>
+  <div class="bar">
+    <div class="seg" role="group" aria-label="Modo"><button id="mT" class="on">Total</button><button id="mI">Individual</button></div>
+    <select id="selAcc" hidden aria-label="Conta"></select>
+    <button id="btnDir">Conectar pasta</button>
+    <button id="btnAdd" class="ghost">Adicionar arquivos</button><button id="btnImp">Importar vendas ML</button><button id="btnSai" class="ghost">Registrar saída</button><input type="file" id="fImp" accept=".xlsx,.xls,.csv" hidden>
+    <input type="file" id="file" accept=".xlsx,.xls,.csv" multiple hidden>
+    <label class="cfg">Resumo na linha <input type="number" id="sumRow" value="2" min="1"></label>
+    <label class="cfg">Dados desde a linha <input type="number" id="firstRow" value="9" min="1"></label>
+  </div>
+</header>
+<main>
+  <div class="empty panel" id="empty"><h2>Conecte suas contas</h2>Clique em “Conectar pasta” e escolha a pasta do OneDrive onde estão as planilhas (uma por conta), ou arraste os arquivos <b>.xlsx</b> para esta página.</div>
+  <div id="dash" hidden>
+    <div class="chips" id="chips"></div>
+    <div class="strip" id="kpi"></div>
+    <div class="grid">
+      <section class="panel"><h2>Alertas e erros</h2><div id="alerts"></div></section>
+      <section class="panel"><h2 id="chT">Comparativo</h2><div class="cw"><canvas id="cv"></canvas></div></section>
+    </div>
+    <section class="panel">
+      <h2>Lançamentos</h2>
+      <div class="filters">
+        <select id="fConta" aria-label="Conta"></select>
+        <select id="fErro"><option value="">Todas as linhas</option><option value="any">Com qualquer erro</option><option value="sem_inv">Sem Investimento Raphael</option><option value="dev">Devolução / reembolso</option><option value="fake">Linha fake</option><option value="cancel">Cancelada com valor</option><option value="campo">Campo ausente</option></select>
+        <select id="fTipo"><option value="">Todos os tipos</option><option value="venda">Vendas</option><option value="reembolso">Reembolso Raphael</option><option value="retirada">Retiradas / saídas</option><option value="fake">Fake</option></select>
+        <input type="search" id="q" placeholder="Buscar nº, estado…">
+        <button class="ghost" id="clr">Limpar simulação</button><button class="ghost" id="btnExp">Exportar saídas (.xlsx)</button><button class="ghost" id="btnCopy">Copiar saídas p/ planilha</button>
+      </div>
+      <div class="tw"><table><thead><tr><th>Conta</th><th>Linha</th><th>Data</th><th>N.º venda</th><th>Estado</th><th class="n">Lucro</th><th class="n">Invest. Raphael</th><th class="n">Saída M. Pago</th><th>Auditoria</th><th class="n">Simular invest.</th></tr></thead><tbody id="tb"></tbody></table></div>
+      <div class="sub" id="cnt" style="margin-top:6px"></div>
+    </section>
+  </div>
+</main>
+<dialog id="dImp"><h2>Importar vendas do Mercado Livre</h2><p class="sub" id="impInfo"></p><label>Conta<select id="impAcc"></select></label><div class="dact"><button class="ghost" id="impNo">Cancelar</button><button id="impOk">Importar</button></div></dialog>
+<dialog id="dSai"><h2>Registrar retirada / saída</h2><label>Conta<select id="saiAcc"></select></label><label>Data da saída<input type="date" id="saiData"></label><label>Valor (R$)<input type="number" id="saiVal" step="0.01" min="0" placeholder="0,00"></label><label>Descrição (opcional)<input type="text" id="saiDesc" placeholder="Ex.: saque Mercado Pago"></label><div class="dact"><button class="ghost" id="saiNo">Cancelar</button><button id="saiOk">Salvar saída</button></div></dialog>
+<div id="toast" role="status" hidden></div>
+<script>
+const $=s=>document.querySelector(s);
+const brl=n=>(n<0?'-':'')+'R$ '+Math.abs(n).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+const num=v=>{if(typeof v==='number')return v;if(v==null||v==='')return 0;let s=String(v).trim();const neg=/^\(|-/.test(s);s=s.replace(/[^\d,.]/g,'');if(s.includes(','))s=s.replace(/\./g,'').replace(',','.');const n=parseFloat(s);return isNaN(n)?0:(neg?-Math.abs(n):n)};
+const MES={janeiro:0,fevereiro:1,'março':2,marco:2,abril:3,maio:4,junho:5,julho:6,agosto:7,setembro:8,outubro:9,novembro:10,dezembro:11};
+const pd=v=>{if(v instanceof Date)return v;if(!v)return null;const m=String(v).match(/(\d{1,2}) de (\S+) de (\d{4})/i);if(m&&MES[m[2].toLowerCase()]!=null)return new Date(+m[3],MES[m[2].toLowerCase()],+m[1]);const d=new Date(v);return isNaN(d)?null:d};
+const key=d=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+const LBL={sem_inv:['Sem investimento','err'],fake:['Fake','warn'],cancel:['Cancelada c/ valor','warn'],dev:['Devolução','warn'],campo:['Campo ausente','err']};
+Chart.defaults.font.family='"DM Sans",system-ui,sans-serif';Chart.defaults.color='#60757A';Chart.defaults.elements.bar.borderRadius=6;Chart.defaults.plugins.legend.labels.usePointStyle=true;
+let acc={},off=new Set(),dir=null,timer=null,sim={},mode='total',cur='',errSel='',chart=null,uid=0;
+
+function classify(r,n,conta){
+  const t=r.map(String).join(' | ').toLowerCase();
+  const o={uid:uid++,n,conta,A:num(r[0]),C:num(r[2]),E:num(r[4]),H:num(r[7]),desc:String(r[11]),id:String(r[8]).trim(),dt:r[9],est:String(r[10]),P:num(r[15]),V:num(r[21]),Z:num(r[25]),zE:r[25]===''||r[25]==null,pE:r[15]===''||r[15]==null,txt:t};
+  o.tipo=/\bfake\b/.test(t)?'fake':/reembolso\s+raphael/.test(t)?'reembolso':/retirada\s+mercado/.test(t)?'retirada':/reembolso\s+caio/.test(t)?'mov':o.id?'venda':'outro';
+  const st=(o.est+' '+String(r[11])).toLowerCase();
+  o.status=o.tipo!=='venda'?'':/cancelad/.test(st)?'Cancelada':'Ativa';
+  o.lucro=o.status==='Cancelada'?0:(o.C||o.Z||o.P);
+  return o;
+}
+function errs(o){
+  const E=[],s=sim[o.uid]||0,ativa=o.status==='Ativa',tx=(o.est+' '+(o.desc||'')).toLowerCase();
+  const dev=o.tipo==='venda'&&(/devolu/.test(tx)||(ativa&&(o.Z<0||o.C<0||/reembols/.test(tx))));
+  if(dev)E.push({k:'dev',imp:Math.abs(o.Z)||Math.abs(o.C)||Math.abs(o.V),m:'Devolução/reembolso: confira o estorno'});
+  if(ativa){
+    if(!dev&&o.lucro!==0&&!o.E&&!s)E.push({k:'sem_inv',imp:o.lucro,m:'Preencha Investimento Raphael (coluna E)'});
+    const miss=[];if(!o.dt)miss.push('Data (J)');if(o.zE&&o.pE)miss.push('Total (Z) / Receita (P)');
+    if(miss.length)E.push({k:'campo',imp:0,m:'Falta: '+miss.join(', ')});
+  }
+  if(o.tipo==='outro')E.push({k:'campo',imp:Math.abs(o.lucro)||Math.abs(o.E),m:'Linha sem N.º de venda (I)'});
+  if(o.tipo==='fake')E.push({k:'fake',imp:Math.abs(o.lucro)+Math.abs(o.E),m:'Linha de teste, fora do lucro real'});
+  if(o.status==='Cancelada'&&(o.Z||o.C||(o.P&&!o.V)))E.push({k:'cancel',imp:Math.abs(o.Z)||Math.abs(o.C)||Math.abs(o.P),m:'Cancelada com valor residual'});
+  return E;
+}
+async function ingest(f,fromDir){
+  const name=f.name.replace(/\.(xlsx|xls|csv)$/i,'');
+  const wb=XLSX.read(await f.arrayBuffer(),{cellDates:true});
+  const A=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1,raw:true,defval:''});
+  const S=A[+$('#sumRow').value-1]||[],rows=[];
+  for(let i=+$('#firstRow').value-1;i<A.length;i++){const r=A[i];if(!r||r.every(c=>c===''||c==null))continue;rows.push(classify(r,i+1,name))}
+  acc[name]={name,last:f.lastModified,fromDir,sum:{A:num(S[0]),C:num(S[2]),E:num(S[4])},rows};
+  applyOverlay(name);
+}
+const scope=()=>mode==='total'?Object.values(acc).filter(a=>!off.has(a.name)):(acc[cur]?[acc[cur]]:[]);
+const S=(a,f)=>a.reduce((t,o)=>t+f(o),0);
+const real=a=>a.rows.filter(o=>o.tipo!=='fake');
+
+function kpis(){
+  const sc=scope(),R=sc.flatMap(real);
+  const rA=S(sc,a=>a.sum.A),rC=S(sc,a=>a.sum.C),rE=S(sc,a=>a.sum.E);
+  const lC=S(R,o=>o.C),lE=S(R,o=>o.E),simE=S(R,o=>sim[o.uid]||0);
+  const ativas=R.filter(o=>o.status==='Ativa'),pend=ativas.filter(o=>errs(o).some(e=>e.k==='sem_inv'));
+  const infl=S(pend,o=>o.lucro),adj=S(ativas,o=>o.lucro)-simE;
+  const d=(r,l)=>Math.abs(r-l)<.01?'confere com os lançamentos':`lançamentos somam ${brl(l)} (dif. ${brl(r-l)})`;
+  const c=(l,v,s,bad)=>`<div class="k ${bad?'bad':''}"><div class="l">${l}</div><div class="v">${brl(v)}</div><div class="s">${s}</div></div>`;
+  $('#kpi').innerHTML=c('Lucro por diário',rA,mode==='total'?`${sc.length} conta(s)`:cur)+c('Lucro por venda',rC,d(rC,lC),Math.abs(rC-lC)>=.01)+c('Investimento Raphael',rE,d(rE,lE)+(simE?` · +${brl(simE)} simulado`:''),Math.abs(rE-lE)>=.01)+c('Lucro inflado por falta de investimento',infl,`${pend.length} venda(s) pendente(s)`,infl!==0)+c('Lucro ajustado (simulação)',adj,`menos ${brl(simE)} simulado`)+c('Retiradas (saídas)',S(sc.flatMap(a=>a.rows).filter(o=>o.tipo==='retirada'),o=>Math.abs(o.H)),`${sc.flatMap(a=>a.rows).filter(o=>o.tipo==='retirada').length} lançamento(s)`);
+}
+function alerts(){
+  const g={};scope().forEach(a=>a.rows.forEach(o=>errs(o).forEach(e=>{const x=g[e.k]=g[e.k]||{n:0,imp:0,by:{}};x.n++;x.imp+=e.imp;if(o.nova&&e.k==='sem_inv')x.nv=(x.nv||0)+1;x.by[a.name]=(x.by[a.name]||0)+1})));
+  const tx={dev:['Devoluções / reembolsos','Valor estornado'],sem_inv:['Vendas sem Investimento Raphael','Lucro sem investimento'],campo:['Campos obrigatórios ausentes','Valor envolvido'],cancel:['Canceladas com valor residual','Valor a conferir'],fake:['Linhas “fake” isoladas do lucro','Valor movimentado']};
+  let h='';
+  for(const k of ['sem_inv','dev','campo','cancel','fake']){const x=g[k];if(!x)continue;
+    h+=`<button class="alert ${k==='fake'||k==='cancel'||k==='dev'?'warn':''} ${errSel===k?'sel':''}" data-k="${k}"><b>${tx[k][0]}</b><span>${x.n} linha(s)${x.nv?` (${x.nv} nova(s) de hoje)`:''} · ${tx[k][1]}: ${brl(x.imp)}</span></button>`;
+    if(mode==='total'&&Object.keys(x.by).length>1)h+=`<div class="sm">${Object.entries(x.by).map(([c,n])=>`<button data-k="${k}" data-c="${c}">${c}: ${n}</button>`).join('')}</div>`}
+  scope().forEach(a=>{[['A','Lucro por diário'],['C','Lucro por venda'],['E','Investimento Raphael']].forEach(([k,n])=>{const dv=a.sum[k]-S(real(a),o=>o[k]);if(Math.abs(dv)>=.01)h+=`<div class="alert info"><b>Divergência — ${a.name}</b><span>${n}: resumo difere das linhas em ${brl(dv)}</span></div>`})});
+  $('#alerts').innerHTML=h||'<div class="alert ok"><b>Nenhum problema encontrado</b><span>Auditoria limpa.</span></div>';
+  document.querySelectorAll('[data-k]').forEach(b=>b.onclick=()=>{errSel=(errSel===b.dataset.k&&!b.dataset.c)?'':b.dataset.k;$('#fErro').value=errSel;if(b.dataset.c)$('#fConta').value=b.dataset.c;table();alerts();$('#tb').scrollIntoView({behavior:'smooth',block:'center'})});
+}
+function draw(){
+  chart&&chart.destroy();const sc=scope();
+  if(mode==='total'){
+    $('#chT').textContent='Lucro × Investimento × Retiradas por conta';
+    chart=new Chart($('#cv'),{type:'bar',data:{labels:sc.map(a=>a.name),datasets:[{label:'Lucro por venda',data:sc.map(a=>a.sum.C),backgroundColor:'#1F8A5B'},{label:'Investimento Raphael',data:sc.map(a=>a.sum.E),backgroundColor:'#D99A1E'},{label:'Retiradas',data:sc.map(a=>S(a.rows.filter(o=>o.tipo==='retirada'),o=>Math.abs(o.H))),backgroundColor:'#2E6FB0'}]},options:{maintainAspectRatio:false}});
+  }else{
+    $('#chT').textContent='Lucro e retiradas por dia — '+cur;
+    const m={},mr={},R=sc.flatMap(a=>a.rows);
+    R.filter(o=>o.tipo!=='fake'&&o.status==='Ativa').forEach(o=>{const d=pd(o.dt);if(d)m[key(d)]=(m[key(d)]||0)+o.lucro});
+    R.filter(o=>o.tipo==='retirada').forEach(o=>{const d=pd(o.dt);if(d)mr[key(d)]=(mr[key(d)]||0)+Math.abs(o.H)});
+    const ds=[...new Set([...Object.keys(m),...Object.keys(mr)])].sort();let t=0;
+    chart=new Chart($('#cv'),{data:{labels:ds.map(d=>d.slice(8)+'/'+d.slice(5,7)),datasets:[{type:'bar',label:'Lucro do dia',data:ds.map(d=>m[d]||0),backgroundColor:'#1F8A5B'},{type:'bar',label:'Retiradas',data:ds.map(d=>mr[d]||0),backgroundColor:'#2E6FB0'},{type:'line',label:'Lucro acumulado',data:ds.map(d=>t+=(m[d]||0)),borderColor:'#D99A1E',tension:.2,pointRadius:2}]},options:{maintainAspectRatio:false}});
+  }
+}
+function cells(o){
+  const e=errs(o),s=sim[o.uid]||0;
+  const bd=e.map(x=>`<span class="b ${LBL[x.k][1]}" title="${x.m}">${LBL[x.k][0]}</span>`).join('')||(o.status==='Ativa'?'<span class="b ok">OK</span>':'');
+  return {l:o.tipo==='venda'||o.tipo==='fake'?`<span class="${o.lucro-s<0?'neg':''}">${brl(o.lucro-s)}</span>`:'',i:(o.E+s)?`<span class="${o.E+s<0?'neg':''}">${brl(o.E+s)}</span>`:'',b:(o.nova?'<span class="b info">Nova</span>':'')+bd,sd:o.tipo==='retirada'?`<span class="neg">${brl(o.H)}</span>`:'',cls:(e.length?'hasErr ':'')+(o.tipo==='fake'?'is-fake ':'')+(o.status==='Cancelada'?'is-cancel':'')};
+}
+function table(){
+  const c=$('#fConta').value,e=$('#fErro').value,t=$('#fTipo').value,q=$('#q').value.toLowerCase();
+  errSel=e&&e!=='any'?e:'';
+  const f=scope().flatMap(a=>a.rows).filter(o=>(!c||o.conta===c)&&(!t||o.tipo===t)&&(!e||(e==='any'?errs(o).length:errs(o).some(x=>x.k===e)))&&(!q||o.txt.includes(q)));
+  $('#tb').innerHTML=f.map(o=>{const x=cells(o),d=pd(o.dt),can=o.status==='Ativa'&&!o.E;
+    return `<tr id="r${o.uid}" class="${x.cls}"><td>${o.conta}</td><td>${o.n}</td><td>${d?d.toLocaleDateString('pt-BR'):'—'}</td><td>${o.id||(o.tipo==='reembolso'?'REEMBOLSO RAPHAEL':o.tipo==='fake'?'fake':'')}</td><td>${o.est}</td><td class="n" id="l${o.uid}">${x.l}</td><td class="n" id="i${o.uid}">${x.i}</td><td class="n">${x.sd}</td><td id="b${o.uid}">${x.b}</td><td class="n">${can?`<input type="number" step="0.01" data-u="${o.uid}" value="${sim[o.uid]||''}" aria-label="Investimento simulado, ${o.conta} linha ${o.n}">`:(o.manual?`<button class="ghost" data-del="${o.manual}" data-c="${o.conta}">Excluir</button>`:'')}</td></tr>`}).join('')||'<tr><td colspan="10" class="empty">Nenhuma linha com esses filtros.</td></tr>';
+  $('#cnt').textContent=`${f.length} linha(s)`;
+  const byU={};scope().forEach(a=>a.rows.forEach(o=>byU[o.uid]=o));
+  document.querySelectorAll('input[data-u]').forEach(i=>i.oninput=()=>{const u=+i.dataset.u,o=byU[u];sim[u]=parseFloat(i.value)||0;const x=cells(o);$('#l'+u).innerHTML=x.l;$('#i'+u).innerHTML=x.i;$('#b'+u).innerHTML=x.b;$('#r'+u).className=x.cls;kpis();alerts()});
+  document.querySelectorAll('[data-del]').forEach(b=>b.onclick=()=>{const ov=OV(),c=b.dataset.c,id=b.dataset.del;if(ov[c])ov[c].saidas=(ov[c].saidas||[]).filter(x=>x.id!==id);saveOV(ov);acc[c].rows=acc[c].rows.filter(o=>o.manual!==id);refresh()});
+}
+function chips(){
+  $('#chips').innerHTML=Object.values(acc).map(a=>`<span class="chip ${off.has(a.name)?'off':''}"><label><input type="checkbox" data-a="${a.name}" ${off.has(a.name)?'':'checked'}> ${a.name}</label>${a.fromDir?'':`<button data-rm="${a.name}" aria-label="Remover ${a.name}">✕</button>`}</span>`).join('');
+  document.querySelectorAll('[data-a]').forEach(i=>i.onchange=()=>{i.checked?off.delete(i.dataset.a):off.add(i.dataset.a);refresh()});
+  document.querySelectorAll('[data-rm]').forEach(b=>b.onclick=()=>{delete acc[b.dataset.rm];refresh()});
+}
+function refresh(){
+  const names=Object.keys(acc);
+  if(!names.length){$('#empty').hidden=false;$('#dash').hidden=true;return}
+  $('#empty').hidden=true;$('#dash').hidden=false;
+  if(!acc[cur])cur=names[0];
+  $('#selAcc').innerHTML=names.map(n=>`<option ${n===cur?'selected':''}>${n}</option>`).join('');
+  $('#selAcc').hidden=mode!=='individual';
+  const pc=$('#fConta').value;
+  $('#fConta').innerHTML='<option value="">Todas as contas</option>'+names.map(n=>`<option ${n===pc?'selected':''}>${n}</option>`).join('');
+  $('#fConta').hidden=mode!=='total';
+  $('#mT').className=mode==='total'?'on':'';$('#mI').className=mode==='individual'?'on':'';
+  chips();kpis();alerts();draw();table();
+}
+function status(m,on){$('#st').textContent=m;$('#dot').className='dot'+(on?' on':'')}
+async function scan(first){
+  try{
+    let ch=false;const seen=new Set();
+    for await(const h of dir.values()){
+      if(h.kind!=='file'||!/\.(xlsx|xls|csv)$/i.test(h.name)||h.name.startsWith('~$'))continue;
+      const f=await h.getFile(),n=f.name.replace(/\.(xlsx|xls|csv)$/i,'');seen.add(n);
+      if(!acc[n]||acc[n].last!==f.lastModified){await ingest(f,true);ch=true}
+    }
+    for(const n in acc)if(acc[n].fromDir&&!seen.has(n)){delete acc[n];ch=true}
+    if(ch||first){refresh();status(`Pasta “${dir.name}” — ${Object.keys(acc).length} conta(s) · atualizado às ${new Date().toLocaleTimeString('pt-BR')} · sincronização automática ligada`,true)}
+  }catch(e){status('Sem acesso à pasta (reconecte)')}
+}
+$('#btnDir').onclick=async()=>{
+  if(!window.showDirectoryPicker){status('Use Chrome ou Edge para sincronizar pasta, ou “Adicionar arquivos”');return}
+  try{dir=await showDirectoryPicker();clearInterval(timer);await scan(true);timer=setInterval(()=>scan(false),3000)}catch(e){if(e.name!=='AbortError')status('Erro: '+e.message)}
+};
+async function addFiles(fs){for(const f of fs)await ingest(f,false);refresh();status(`${Object.keys(acc).length} conta(s) carregada(s) por arquivo — para atualizar, adicione o arquivo de novo`,false)}
+$('#btnAdd').onclick=()=>$('#file').click();
+$('#file').onchange=e=>addFiles([...e.target.files]);
+addEventListener('dragover',e=>e.preventDefault());
+addEventListener('drop',e=>{e.preventDefault();addFiles([...e.dataTransfer.files])});
+$('#mT').onclick=()=>{mode='total';refresh()};$('#mI').onclick=()=>{mode='individual';refresh()};
+$('#selAcc').onchange=e=>{cur=e.target.value;refresh()};
+['fConta','fErro','fTipo'].forEach(i=>$('#'+i).onchange=()=>{table();alerts()});
+$('#q').oninput=table;
+$('#clr').onclick=()=>{sim={};refresh()};
+$('#sumRow').onchange=$('#firstRow').onchange=()=>{if(dir)scanAll();else status('Adicione os arquivos novamente para reaplicar')};
+async function scanAll(){for(const n in acc)acc[n].last=0;await scan(true)}
+
+/* ===== Importação diária (upsert por N.º de venda) e saídas ===== */
+const OV=()=>{try{return JSON.parse(localStorage.getItem('mlov')||'{}')}catch(e){return{}}};
+const saveOV=o=>{try{localStorage.setItem('mlov',JSON.stringify(o))}catch(e){toast('Não consegui salvar no navegador (armazenamento bloqueado).',1)}};
+function toast(m,bad){const t=$('#toast');t.textContent=m;t.hidden=false;t.style.background=bad?'#C4432F':'';clearTimeout(toast.t);toast.t=setTimeout(()=>t.hidden=true,8000)}
+function arr(s){const r=Array(26).fill('');r[8]=s.id;r[9]=s.dt;r[10]=s.est;r[11]=s.desc;r[15]=s.P;r[21]=s.V;r[25]=s.Z;return r}
+function upsertRows(a,sales,today){
+  let add=0,upd=0;const map={};a.rows.forEach(o=>{if(o.id&&o.tipo==='venda')map[o.id]=o});
+  for(const s of sales){
+    const nw=classify(arr(s),'novo',a.name),o=map[s.id];
+    if(o){Object.assign(o,{est:nw.est,desc:nw.desc,dt:nw.dt,P:nw.P,V:nw.V,Z:nw.Z,zE:nw.zE,pE:nw.pE,status:nw.status,txt:nw.txt});o.lucro=o.status==='Cancelada'?0:(o.C||o.Z||o.P);upd++}
+    else{nw.nova=s.d===today;a.rows.push(nw);map[s.id]=nw;add++}
+  }
+  return{add,upd};
+}
+function saidaRow(conta,s){const r=Array(26).fill('');r[7]=-s.valor;r[8]='RETIRADA MERCADO PAGO';r[9]=new Date(s.data+'T12:00:00');r[11]=s.desc||'';const o=classify(r,'novo',conta);o.manual=s.id;return o}
+function applyOverlay(name){
+  const a=acc[name],ov=OV()[name];if(!a||!ov)return;
+  if(ov.sales)upsertRows(a,Object.values(ov.sales),key(new Date()));
+  (ov.saidas||[]).forEach(s=>{const d=pd(s.data);
+    const dup=a.rows.some(o=>o.tipo==='retirada'&&!o.manual&&Math.abs(Math.abs(o.H)-s.valor)<.01&&pd(o.dt)&&d&&key(pd(o.dt))===key(d));
+    if(!dup)a.rows.push(saidaRow(a.name,s))});
+}
+function fillSel(sel,withNew){sel.innerHTML=Object.keys(acc).map(x=>`<option ${x===cur?'selected':''}>${x}</option>`).join('')+(withNew?'<option value="__new">+ Nova conta…</option>':'')}
+let pend=null;
+const norm=v=>String(v).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();
+$('#btnImp').onclick=()=>$('#fImp').click();
+$('#fImp').onchange=async e=>{
+  const f=e.target.files[0];e.target.value='';if(!f)return;
+  try{
+    const wb=XLSX.read(await f.arrayBuffer(),{cellDates:true});
+    const A=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1,raw:true,defval:''});
+    const hi=A.findIndex(r=>r.some(c=>/^n.{0,3} de venda$/.test(norm(c))));
+    if(hi<0){toast('Não encontrei a coluna “N.º de venda” nessa planilha.',1);return}
+    const H=A[hi].map(norm),ix=re=>H.findIndex(h=>re.test(h));
+    const cm={id:ix(/^n.{0,3} de venda$/),dt:ix(/^data da venda/),est:ix(/^estado$/),desc:ix(/^descricao do status/),P:ix(/^receita por produtos/),V:ix(/^cancelamentos e reembolsos/),Z:ix(/^total \(brl\)/)};
+    const g=(r,k)=>cm[k]>=0?r[cm[k]]:'',today=key(new Date()),sales=[];
+    for(let i=hi+1;i<A.length;i++){const r=A[i],id=String(g(r,'id')).trim();if(!/^\d{8,}$/.test(id))continue;
+      const d=pd(g(r,'dt'));sales.push({id,d:today,dt:d?d.toISOString():String(g(r,'dt')),est:String(g(r,'est')),desc:String(g(r,'desc')),P:num(g(r,'P')),V:num(g(r,'V')),Z:num(g(r,'Z'))})}
+    if(!sales.length){toast('Nenhuma venda encontrada abaixo do cabeçalho.',1);return}
+    pend={sales,name:f.name};fillSel($('#impAcc'),true);
+    $('#impInfo').textContent=`${sales.length} venda(s) encontrada(s) em ${f.name}. Vendas novas entram; as que já existem na conta são atualizadas.`;
+    $('#dImp').showModal();
+  }catch(err){toast('Erro ao ler a planilha: '+err.message,1)}
+};
+$('#impNo').onclick=()=>$('#dImp').close();
+$('#impOk').onclick=()=>{
+  let name=$('#impAcc').value;
+  if(name==='__new'){name=(prompt('Nome da nova conta:')||'').trim();if(!name)return}
+  if(!acc[name])acc[name]={name,last:0,fromDir:false,sum:{A:0,C:0,E:0},rows:[]};
+  const ov=OV(),o=ov[name]=ov[name]||{sales:{},saidas:[]};o.sales=o.sales||{};
+  pend.sales.forEach(s=>{o.sales[s.id]=Object.assign({},s,{d:(o.sales[s.id]&&o.sales[s.id].d)||s.d})});saveOV(ov);
+  const r=upsertRows(acc[name],pend.sales,key(new Date())),ids=new Set(pend.sales.map(s=>s.id));
+  const t=acc[name].rows.filter(x=>ids.has(x.id));
+  const semInv=t.filter(x=>x.nova&&errs(x).some(e=>e.k==='sem_inv')).length,devs=t.filter(x=>errs(x).some(e=>e.k==='dev')).length;
+  $('#dImp').close();cur=name;refresh();
+  toast(`${name}: ${r.add} venda(s) nova(s), ${r.upd} atualizada(s). ${semInv} nova(s) sem Investimento Raphael; ${devs} devolução(ões).`);
+};
+$('#btnSai').onclick=()=>{
+  if(!Object.keys(acc).length){toast('Carregue ou crie uma conta primeiro (Importar vendas ML cria uma conta nova).',1);return}
+  fillSel($('#saiAcc'));$('#saiData').value=key(new Date());$('#saiVal').value='';$('#saiDesc').value='';$('#dSai').showModal();
+};
+$('#saiNo').onclick=()=>$('#dSai').close();
+$('#saiOk').onclick=()=>{
+  const v=parseFloat($('#saiVal').value),d=$('#saiData').value,name=$('#saiAcc').value;
+  if(!(v>0)||!d){toast('Informe a data e um valor maior que zero.',1);return}
+  const s={id:'s'+Date.now(),data:d,valor:Math.round(v*100)/100,desc:$('#saiDesc').value.trim()};
+  const ov=OV(),o=ov[name]=ov[name]||{sales:{},saidas:[]};(o.saidas=o.saidas||[]).push(s);saveOV(ov);
+  acc[name].rows.push(saidaRow(name,s));$('#dSai').close();refresh();
+  toast(`Saída de ${brl(v)} em ${d.split('-').reverse().join('/')} registrada na conta ${name}.`);
+};
+function saidaLinhas(){
+  const c=mode==='total'?$('#fConta').value:'';
+  return scope().flatMap(a=>a.rows).filter(o=>o.manual&&(!c||o.conta===c)).sort((x,y)=>pd(x.dt)-pd(y.dt)).map(o=>{const r=Array(26).fill('');r[7]=o.H;r[8]='RETIRADA MERCADO PAGO';r[9]=pd(o.dt).toLocaleDateString('pt-BR');r[11]=o.desc;return r});
+}
+$('#btnExp').onclick=()=>{
+  const R=saidaLinhas();if(!R.length){toast('Nenhuma saída lançada aqui para exportar.',1);return}
+  const ws=XLSX.utils.aoa_to_sheet([['','','','','','','','Mercado Pago','Lançamento','Data','','Descrição'],...R]),w=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(w,ws,'Saidas');XLSX.writeFile(w,'saidas-mercado-pago.xlsx');
+};
+$('#btnCopy').onclick=()=>{
+  const R=saidaLinhas();if(!R.length){toast('Nenhuma saída lançada aqui para copiar.',1);return}
+  navigator.clipboard.writeText(R.map(r=>r.join('\t')).join('\n')).then(()=>toast(`${R.length} linha(s) copiada(s). Cole na primeira linha vazia da planilha, na coluna A.`),()=>toast('O navegador bloqueou a cópia. Use “Exportar saídas”.',1));
+};
+</script>
+</body>
+</html>
